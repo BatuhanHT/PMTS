@@ -1,0 +1,74 @@
+name: Desktop build
+
+# Builds the installers on GitHub's own macOS and Windows machines.
+# - Run manually (Actions > Desktop build > Run workflow): installers are attached to the run as artifacts.
+# - Push a tag such as v0.1.0: the same build runs, then a GitHub Release is published with both installers.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (.dmg)
+            os: macos-latest
+            script: desktop:dist
+            artifact: pmts-macos
+            files: release/*.dmg
+          - name: Windows (.exe)
+            os: windows-latest
+            script: desktop:dist:win
+            artifact: pmts-windows
+            files: release/*.exe
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Tag must match package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
+      - run: npm ci
+      - run: npm test
+      - run: npm run ${{ matrix.script }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Checksums
+        working-directory: artifacts
+        run: sha256sum -- *.dmg *.exe > ../SHA256SUMS.txt
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" artifacts/* SHA256SUMS.txt \
+            --verify-tag \
+            --title "PMTS $GITHUB_REF_NAME" \
+            --notes-file .github/release-notes.md

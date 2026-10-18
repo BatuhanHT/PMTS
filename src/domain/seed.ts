@@ -1,0 +1,173 @@
+import type { AppData, MovementType, Unit } from './types.ts'
+
+// Demo data. Prices and movements are consistent: every stock-out carries the
+// unit price that was current on its date (the snapshot rule), and no balance goes negative.
+
+const CREATED = '2026-03-01'
+
+export function seedData(): AppData {
+  const tag = (key: string, name: string, color: string) => ({ id: `tag-${key}`, name, color })
+  const item = (
+    n: number,
+    name: string,
+    unit: Unit,
+    minStock: number,
+    tags: string[],
+    description = '',
+  ) => ({
+    id: `item-${n}`,
+    assetCode: `PMTS-${String(n).padStart(4, '0')}`,
+    name,
+    unit,
+    vatRate: 20,
+    minStock,
+    description,
+    tagIds: tags.map((t) => `tag-${t}`),
+    createdAt: CREATED,
+  })
+
+  let priceSeq = 0
+  const price = (n: number, date: string, unitPrice: number, supplier: string) => ({
+    id: `price-${++priceSeq}`,
+    itemId: `item-${n}`,
+    date,
+    unitPrice,
+    vatRate: 20,
+    supplier,
+  })
+
+  let moveSeq = 0
+  const move = (
+    n: number,
+    type: MovementType,
+    date: string,
+    delta: number,
+    unitPrice: number,
+    projectKey: string | null = null,
+    note = '',
+  ) => ({
+    id: `move-${++moveSeq}`,
+    itemId: `item-${n}`,
+    type,
+    date,
+    delta,
+    unitPrice,
+    projectId: projectKey ? `project-${projectKey}` : null,
+    note,
+  })
+
+  return {
+    version: 1,
+    nextAssetNumber: 11,
+    nextProjectNumber: 4,
+    tags: [
+      tag('malzeme', 'Malzeme', '#2563eb'),
+      tag('demirbas', 'Demirbaş', '#7c3aed'),
+      tag('elektrik', 'Elektrik', '#d97706'),
+      tag('boya', 'Boya-Kaplama', '#e11d48'),
+      tag('kritik', 'Kritik', '#be123c'),
+      tag('sarf', 'Sarf', '#16a34a'),
+    ],
+    items: [
+      item(1, 'Çimento CEM II 42,5 (50 kg torba)', 'adet', 100, ['malzeme']),
+      item(2, 'İnşaat demiri Ø12 nervürlü', 'kg', 1000, ['malzeme', 'kritik']),
+      item(3, 'İç cephe boyası', 'lt', 100, ['boya', 'sarf']),
+      item(4, 'NYY kablo 3x2,5 mm²', 'm', 500, ['elektrik', 'kritik']),
+      item(5, 'Alçıpan 12,5 mm', 'm²', 150, ['malzeme']),
+      item(6, 'Fayans 30x60', 'm²', 100, ['malzeme']),
+      item(7, 'Matkap ucu seti', 'paket', 5, ['sarf']),
+      item(8, 'Dizüstü bilgisayar', 'adet', 1, ['demirbas'], 'Ofis kullanımı, 16 GB RAM'),
+      item(9, 'LED panel armatür 60x60', 'adet', 40, ['elektrik']),
+      item(10, 'Kaynak elektrodu 3,25 mm', 'kg', 50, ['sarf']),
+    ],
+    prices: [
+      price(1, '2026-03-01', 185, 'Yapı Market A.Ş.'),
+      price(1, '2026-06-01', 205, 'Yapı Market A.Ş.'),
+      price(1, '2026-09-01', 228, 'Yapı Market A.Ş.'),
+      price(2, '2026-03-01', 27.5, 'Demir Dünyası'),
+      price(2, '2026-06-15', 29.2, 'Demir Dünyası'),
+      price(2, '2026-09-10', 31.8, 'Demir Dünyası'),
+      price(3, '2026-03-10', 142, 'Boya Merkezi'),
+      price(3, '2026-07-01', 156, 'Boya Merkezi'),
+      price(3, '2026-09-20', 171, 'Boya Merkezi'),
+      price(4, '2026-03-05', 38, 'Elektro Toptan'),
+      price(4, '2026-06-20', 41.5, 'Elektro Toptan'),
+      price(4, '2026-10-01', 46, 'Elektro Toptan'),
+      price(5, '2026-03-01', 118, 'Yapı Market A.Ş.'),
+      price(5, '2026-07-15', 124, 'Yapı Market A.Ş.'),
+      price(6, '2026-04-01', 265, 'Seramik Evi'),
+      price(6, '2026-08-01', 289, 'Seramik Evi'),
+      price(7, '2026-05-01', 410, 'Hırdavat Plaza'),
+      price(7, '2026-09-01', 395, 'Hırdavat Plaza'),
+      price(8, '2026-04-10', 38500, 'Teknoloji Bayii'),
+      price(8, '2026-09-25', 41200, 'Teknoloji Bayii'),
+      price(9, '2026-03-15', 520, 'Elektro Toptan'),
+      price(9, '2026-08-10', 505, 'Elektro Toptan'),
+      price(9, '2026-10-05', 540, 'Elektro Toptan'),
+      price(10, '2026-04-01', 92, 'Hırdavat Plaza'),
+      price(10, '2026-09-15', 104, 'Hırdavat Plaza'),
+    ],
+    movements: [
+      move(1, 'in', '2026-03-02', 400, 185, null, 'İlk stok girişi'),
+      move(1, 'out', '2026-04-05', -250, 185, 'p2'),
+      move(1, 'in', '2026-06-02', 300, 205),
+      move(1, 'out', '2026-06-20', -200, 205, 'p2'),
+      move(2, 'in', '2026-03-02', 5000, 27.5, null, 'İlk stok girişi'),
+      move(2, 'out', '2026-04-08', -3200, 27.5, 'p2'),
+      move(2, 'in', '2026-06-16', 3000, 29.2),
+      move(2, 'out', '2026-07-12', -2500, 29.2, 'p2'),
+      move(3, 'in', '2026-03-11', 300, 142),
+      move(3, 'in', '2026-07-02', 200, 156),
+      move(3, 'out', '2026-08-05', -260, 156, 'p1'),
+      move(4, 'in', '2026-03-06', 1500, 38),
+      move(4, 'out', '2026-04-12', -600, 38, 'p2'),
+      move(4, 'out', '2026-08-12', -500, 41.5, 'p1'),
+      move(5, 'in', '2026-03-02', 600, 118),
+      move(5, 'out', '2026-08-01', -420, 124, 'p1'),
+      move(5, 'adjust', '2026-09-12', -5, 0, null, 'Sayım farkı: kırık levhalar'),
+      move(6, 'in', '2026-04-02', 300, 265),
+      move(6, 'out', '2026-08-20', -210, 289, 'p1'),
+      move(7, 'in', '2026-05-02', 20, 410),
+      move(7, 'out', '2026-06-10', -6, 410, 'p1'),
+      move(8, 'in', '2026-04-11', 5, 38500),
+      move(8, 'out', '2026-09-26', -3, 41200, 'p1', 'Ofis personeli için'),
+      move(9, 'in', '2026-03-16', 200, 520),
+      move(9, 'out', '2026-05-20', -80, 520, 'p2'),
+      move(9, 'out', '2026-09-01', -60, 505, 'p1'),
+      move(10, 'in', '2026-04-02', 200, 92),
+      move(10, 'out', '2026-05-05', -120, 92, 'p2'),
+    ],
+    projects: [
+      {
+        id: 'project-p1',
+        code: 'PRJ-001',
+        name: 'Merkez Ofis Yenileme',
+        status: 'active',
+        startDate: '2026-06-01',
+        endDate: '2026-12-15',
+        budget: 400000,
+        createdAt: CREATED,
+      },
+      {
+        id: 'project-p2',
+        code: 'PRJ-002',
+        name: 'Depo İnşaatı',
+        status: 'completed',
+        startDate: '2026-03-01',
+        endDate: '2026-06-30',
+        budget: 340000,
+        createdAt: CREATED,
+      },
+      {
+        id: 'project-p3',
+        code: 'PRJ-003',
+        name: 'Şube Kurulumu',
+        status: 'planned',
+        startDate: '2027-01-10',
+        endDate: '2027-04-30',
+        budget: 800000,
+        createdAt: CREATED,
+      },
+    ],
+  }
+}
